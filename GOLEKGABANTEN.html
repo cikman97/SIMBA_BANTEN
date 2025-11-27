@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GOLEK - Dashboard & Kertas Kerja GA</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+  <!-- NAVBAR -->
+  <nav class="bg-blue-700 text-white px-6 py-4 flex justify-between items-center shadow">
+    <div class="flex items-center space-x-4">
+      <img src="japfa-comfeed-logo-png_seeklogo-231278.png" alt="Logo JAPFA" class="h-24">
+      <h1 class="text-2xl font-bold">GOLEK</h1>
+    </div>
+    <div class="space-x-4">
+      <button onclick="showDashboard()" class="hover:underline">Dashboard</button>
+      <button onclick="showWorksheet()" class="underline">Kertas Kerja</button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main id="content" class="px-6 py-6">
+
+    <!-- DASHBOARD SECTION -->
+    <section id="dashboard" class="mb-8 hidden">
+      <h2 class="text-2xl font-bold mb-4">Dashboard Pemantauan</h2>
+      <div class="grid grid-cols-3 gap-4 text-white">
+        <div class="bg-yellow-500 p-4 rounded-xl shadow">
+          <h3 class="text-lg font-semibold">Pengajuan</h3>
+          <p id="count-pengajuan" class="text-3xl font-bold">0</p>
+        </div>
+        <div class="bg-blue-500 p-4 rounded-xl shadow">
+          <h3 class="text-lg font-semibold">Proses</h3>
+          <p id="count-proses" class="text-3xl font-bold">0</p>
+        </div>
+        <div class="bg-green-600 p-4 rounded-xl shadow">
+          <h3 class="text-lg font-semibold">Selesai</h3>
+          <p id="count-selesai" class="text-3xl font-bold">0</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORKSHEET SECTION -->
+    <section id="worksheet">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold">Kertas Kerja General Affair</h2>
+        <div class="space-x-2">
+          <button onclick="exportToExcel()" class="bg-green-600 text-white px-4 py-2 rounded">Export Excel</button>
+          <button onclick="exportToPDF()" class="bg-red-600 text-white px-4 py-2 rounded">Export PDF</button>
+          <button onclick="resetData()" class="bg-gray-600 text-white px-4 py-2 rounded">Reset Data</button>
+        </div>
+      </div>
+
+      <!-- Filter Unit Kerja -->
+      <div class="flex items-center mb-2 space-x-2">
+        <label for="filterUnitKerja" class="font-semibold">Filter Unit Kerja:</label>
+        <select id="filterUnitKerja" class="border px-2 py-1">
+          <option value="">Semua</option>
+        </select>
+      </div>
+
+      <table class="w-full table-auto bg-white rounded shadow overflow-hidden">
+        <thead class="bg-blue-100 text-sm">
+          <tr>
+            <th class="px-2 py-2">Uraian Tugas</th>
+            <th class="px-2 py-2">PIC</th>
+            <th class="px-2 py-2">Unit Kerja</th>
+            <th class="px-2 py-2">Tanggal Pengajuan</th>
+            <th class="px-2 py-2">Tanggal Proses</th>
+            <th class="px-2 py-2">Tanggal Selesai</th>
+            <th class="px-2 py-2">Status</th>
+            <th class="px-2 py-2">Upload</th>
+            <th class="px-2 py-2">Biaya (Rp)</th>
+            <th class="px-2 py-2">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="taskTableBody" class="text-xs"></tbody>
+        <tfoot>
+          <tr class="bg-gray-100">
+            <td colspan="8" class="text-right font-bold px-2 py-2">Total Biaya</td>
+            <td class="px-2 py-2 font-bold" id="totalBiaya">Rp 0</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+      <button onclick="addTaskRow()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded">Tambah Tugas</button>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="text-center py-4 mt-12 text-sm text-gray-600">@ 2025 GOLEK PT CIOMAS ADISATWA</footer>
+
+  <!-- SCRIPT -->
+  <script>
+    function showDashboard() {
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('worksheet').style.display = 'none';
+    }
+
+    function showWorksheet() {
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('worksheet').style.display = 'block';
+    }
+
+    function addTaskRow(task = {}) {
+      const tbody = document.getElementById('taskTableBody');
+      const row = document.createElement('tr');
+      const fileId = 'file-' + Math.random().toString(36).substr(2, 9);
+      row.innerHTML = `
+        <td><input type="text" class="uraian border px-1 py-1 w-full" value="${task.uraian || ''}"></td>
+        <td><input type="text" class="pic border px-1 py-1 w-full" value="${task.pic || ''}"></td>
+        <td><input type="text" class="unitkerja border px-1 py-1 w-full" value="${task.unitkerja || ''}"></td>
+        <td><input type="date" class="pengajuan border px-1 py-1 w-full" value="${task.pengajuan || ''}"></td>
+        <td><input type="date" class="proses border px-1 py-1 w-full" value="${task.proses || ''}"></td>
+        <td><input type="date" class="selesai border px-1 py-1 w-full" value="${task.selesai || ''}"></td>
+        <td class="status font-semibold text-center">Pengajuan</td>
+        <td>
+          <input type="file" class="upload w-full hidden" id="${fileId}" onchange="handleFileUpload(event, '${fileId}')">
+          <label for="${fileId}" class="text-blue-600 underline cursor-pointer">Pilih File</label>
+          <div class="file-info text-xs text-gray-700 mt-1"></div>
+        </td>
+        <td><input type="number" class="biaya border px-1 py-1 w-full" value="${task.biaya || 0}" min="0" onchange="updateTotal()"></td>
+        <td><button onclick="removeRow(this)" class="bg-red-500 text-white px-2 py-1 rounded">Hapus</button></td>
+      `;
+      tbody.appendChild(row);
+      updateStatus();
+      updateCounts();
+      updateTotal();
+      updateUnitKerjaFilter();
+      saveTasksToLocalStorage();
+    }
+
+    function handleFileUpload(event, fileId) {
+      const file = event.target.files[0];
+      const infoDiv = document.getElementById(fileId).parentElement.querySelector('.file-info');
+      if (file) {
+        const url = URL.createObjectURL(file);
+        infoDiv.innerHTML = `<a href="${url}" target="_blank" class="text-blue-500 hover:underline">Lihat</a> | <a href="${url}" download="${file.name}" class="text-green-600 hover:underline">Download</a>`;
+      }
+    }
+
+    function removeRow(btn) {
+      btn.closest('tr').remove();
+      updateCounts();
+      updateTotal();
+      updateUnitKerjaFilter();
+      saveTasksToLocalStorage();
+    }
+
+    function updateStatus() {
+      document.querySelectorAll('#taskTableBody tr').forEach(row => {
+        const tglSelesai = row.querySelector('.selesai').value;
+        const tglProses = row.querySelector('.proses').value;
+        const statusCell = row.querySelector('.status');
+        if (tglSelesai) statusCell.textContent = 'Selesai';
+        else if (tglProses) statusCell.textContent = 'Proses';
+        else statusCell.textContent = 'Pengajuan';
+      });
+    }
+
+    function updateCounts() {
+      let pengajuan = 0, proses = 0, selesai = 0;
+      document.querySelectorAll('#taskTableBody tr').forEach(row => {
+        const status = row.querySelector('.status').textContent;
+        if (status === 'Pengajuan') pengajuan++;
+        else if (status === 'Proses') proses++;
+        else if (status === 'Selesai') selesai++;
+      });
+      document.getElementById('count-pengajuan').textContent = pengajuan;
+      document.getElementById('count-proses').textContent = proses;
+      document.getElementById('count-selesai').textContent = selesai;
+    }
+
+    function updateTotal() {
+      let total = 0;
+      document.querySelectorAll('.biaya').forEach(input => {
+        total += parseInt(input.value || 0);
+      });
+      document.getElementById('totalBiaya').textContent = 'Rp ' + total.toLocaleString();
+    }
+
+    function updateUnitKerjaFilter() {
+      const select = document.getElementById('filterUnitKerja');
+      const units = [...new Set([...document.querySelectorAll('.unitkerja')].map(i => i.value).filter(v => v))];
+      select.innerHTML = '<option value="">Semua</option>' + units.map(u => `<option value="${u}">${u}</option>`).join('');
+    }
+
+    document.getElementById('filterUnitKerja').addEventListener('change', function() {
+      const filterValue = this.value;
+      document.querySelectorAll('#taskTableBody tr').forEach(row => {
+        const unit = row.querySelector('.unitkerja').value;
+        row.style.display = (!filterValue || unit === filterValue) ? '' : 'none';
+      });
+    });
+
+    function saveTasksToLocalStorage() {
+      const tasks = [];
+      document.querySelectorAll('#taskTableBody tr').forEach(row => {
+        tasks.push({
+          uraian: row.querySelector('.uraian').value,
+          pic: row.querySelector('.pic').value,
+          unitkerja: row.querySelector('.unitkerja').value,
+          pengajuan: row.querySelector('.pengajuan').value,
+          proses: row.querySelector('.proses').value,
+          selesai: row.querySelector('.selesai').value,
+          biaya: row.querySelector('.biaya').value
+        });
+      });
+      localStorage.setItem('golekTasks', JSON.stringify(tasks));
+    }
+
+    function loadTasksFromLocalStorage() {
+      const tasks = JSON.parse(localStorage.getItem('golekTasks') || '[]');
+      tasks.forEach(task => addTaskRow(task));
+    }
+
+    function resetData() {
+      if (confirm('Yakin ingin menghapus semua data?')) {
+        localStorage.removeItem('golekTasks');
+        location.reload();
+      }
+    }
+
+    function exportToExcel() {
+      let data = [['Uraian Tugas', 'PIC', 'Unit Kerja', 'Tgl Pengajuan', 'Tgl Proses', 'Tgl Selesai', 'Status', 'Biaya (Rp)']];
+      document.querySelectorAll('#taskTableBody tr').forEach(row => {
+        const uraian = row.querySelector('.uraian').value;
+        const pic = row.querySelector('.pic').value;
+        const unitkerja = row.querySelector('.unitkerja').value;
+        const pengajuan = row.querySelector('.pengajuan').value;
+        const proses = row.querySelector('.proses').value;
+        const selesai = row.querySelector('.selesai').value;
+        const status = row.querySelector('.status').textContent;
+        const biaya = row.querySelector('.biaya').value;
+        data.push([uraian, pic, unitkerja, pengajuan, proses, selesai, status, biaya]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Kertas Kerja GA');
+      XLSX.writeFile(wb, 'Kertas_Kerja_GA.xlsx');
+    }
+
+    function exportToPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text("Laporan Kertas Kerja GA", 14, 10);
+      let rows = [];
+      document.querySelectorAll('#taskTableBody tr').forEach(row => {
+        const uraian = row.querySelector('.uraian').value;
+        const pic = row.querySelector('.pic').value;
+        const unitkerja = row.querySelector('.unitkerja').value;
+        const pengajuan = row.querySelector('.pengajuan').value;
+        const proses = row.querySelector('.proses').value;
+        const selesai = row.querySelector('.selesai').value;
+        const status = row.querySelector('.status').textContent;
+        const biaya = row.querySelector('.biaya').value;
+        rows.push([uraian, pic, unitkerja, pengajuan, proses, selesai, status, biaya]);
+      });
+      doc.autoTable({
+        head: [["Uraian", "PIC", "Unit Kerja", "Pengajuan", "Proses", "Selesai", "Status", "Biaya"]],
+        body: rows,
+        startY: 20,
+      });
+      doc.save("Kertas_Kerja_GA.pdf");
+    }
+
+    document.addEventListener('input', function (e) {
+      if (
+        e.target.classList.contains('uraian') ||
+        e.target.classList.contains('pic') ||
+        e.target.classList.contains('unitkerja') ||
+        e.target.classList.contains('pengajuan') ||
+        e.target.classList.contains('proses') ||
+        e.target.classList.contains('selesai') ||
+        e.target.classList.contains('biaya')
+      ) {
+        updateStatus();
+        updateCounts();
+        updateTotal();
+        updateUnitKerjaFilter();
+        saveTasksToLocalStorage();
+      }
+    });
+
+    window.onload = function () {
+      loadTasksFromLocalStorage();
+      showWorksheet();
+    };
+  </script>
+</body>
+</html>
